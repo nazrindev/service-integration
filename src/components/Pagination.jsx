@@ -3,24 +3,22 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 function getPageNumbers(currentPage, totalPages) {
   if (totalPages <= 1) return [1];
 
-  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
-
-  const sorted = [...pages]
-    .filter((page) => page >= 1 && page <= totalPages)
-    .sort((a, b) => a - b);
-
-  const result = [];
-  let previous = 0;
-
-  for (const page of sorted) {
-    if (previous && page - previous > 1) {
-      result.push("ellipsis");
-    }
-    result.push(page);
-    previous = page;
+  if (totalPages <= 3) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
-  return result;
+  if (totalPages === 4) {
+    if (currentPage === 1) return [1, 2, "ellipsis", 4];
+    return [2, 3, 4];
+  }
+
+  if (currentPage === 1) return [1, 2, "ellipsis", totalPages];
+  if (currentPage === 2) return [2, 3, "ellipsis", totalPages];
+  if (currentPage >= totalPages - 1) {
+    return [1, "ellipsis", totalPages - 1, totalPages];
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages];
 }
 
 export default function Pagination({

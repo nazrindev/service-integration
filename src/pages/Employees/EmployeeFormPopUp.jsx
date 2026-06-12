@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { createEmployee, updateEmployee } from "../../services/EmployeeService";
 import { DESIGNATIONS, GENDERS } from "../../constants/lookups";
 import StatusMessage from "../../components/StatusMessage";
+import { validateEmployeeForm } from "../../utils/validation";
+import {
+  isEmployeeNotFound,
+  isEmployeeNotFoundError,
+  isEmployeeApiFailure,
+  getEmployeeApiErrorMessage,
+} from "../../utils/employeeResponse";
+import RequiredMark from "../../components/RequiredMark";
 
 const EMPTY_FORM = {
   firstName: "",
@@ -43,9 +51,15 @@ function mapEmployeeToForm(employee) {
   };
 }
 
-export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
+export default function EmployeeFormPopUp({
+  employee,
+  onClose,
+  onSuccess,
+  onNotFound,
+}) {
   const isEditMode = Boolean(employee?.employeeID);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
   const [statusMessage, setStatusMessage] = useState(null);
 
   useEffect(() => {
@@ -57,6 +71,7 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
 
   useEffect(() => {
     setFormData(employee ? mapEmployeeToForm(employee) : EMPTY_FORM);
+    setErrors({});
     setStatusMessage(null);
   }, [employee]);
 
@@ -67,17 +82,27 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleApiFailure = (data) => {
+    const message = getEmployeeApiErrorMessage(data);
+    setStatusMessage({ type: "error", message });
+
+    if (/email/i.test(message)) {
+      setErrors((prev) => ({ ...prev, personalEmail: message }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const dob = new Date(formData.dateOfBirth);
-    const today = new Date();
-    if (dob > today) {
+    const validationErrors = validateEmployeeForm(formData, isEditMode);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       setStatusMessage({
         type: "warning",
-        message: "Date of Birth cannot be a future date.",
+        message: "Please fix the errors below before submitting.",
       });
       return;
     }
@@ -100,20 +125,48 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
       setStatusMessage(null);
 
       if (isEditMode) {
-        await updateEmployee(employee.employeeID, payload);
+        const data = await updateEmployee(employee.employeeID, payload);
+
+        if (isEmployeeNotFound(data)) {
+          onNotFound?.();
+          return;
+        }
+
+        if (isEmployeeApiFailure(data)) {
+          handleApiFailure(data);
+          return;
+        }
       } else {
-        await createEmployee(payload);
+        const data = await createEmployee(payload);
+
+        if (isEmployeeApiFailure(data)) {
+          handleApiFailure(data);
+          return;
+        }
       }
 
       onSuccess?.(isEditMode ? "edit" : "add");
       onClose();
     } catch (error) {
       console.error(error);
+      const errorData = error.response?.data;
+
+      if (isEmployeeNotFoundError(error)) {
+        onNotFound?.();
+        return;
+      }
+
+      if (isEmployeeApiFailure(errorData)) {
+        handleApiFailure(errorData);
+        return;
+      }
+
       setStatusMessage({
         type: "error",
         message:
-          error.response?.data?.message ||
-          error.response?.data?.title ||
+          errorData?.errorMessage ||
+          errorData?.message ||
+          errorData?.title ||
           `Failed to ${isEditMode ? "update" : "create"} employee. Please try again.`,
       });
     }
@@ -122,12 +175,32 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
   const inputClass =
     "w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
 
+  const fieldClass = (name) =>
+    `${inputClass} ${
+      errors[name]
+        ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+        : ""
+    }`;
+
+  const FieldError = ({ name }) =>
+    errors[name] ? (
+      <p className="mt-1 text-xs text-red-600">{errors[name]}</p>
+    ) : null;
+
+  const FieldLabel = ({ children, required = true }) => (
+    <label className="mb-1 block text-sm font-medium text-slate-700">
+      {children}
+      {required && <RequiredMark />}
+    </label>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} />
 
       <form
         onSubmit={handleSubmit}
+        noValidate
         className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between rounded-t-2xl border-b border-slate-200 bg-white px-6 py-5">
@@ -156,122 +229,108 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                First Name
-              </label>
+              <FieldLabel>First Name</FieldLabel>
               <input
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleOnChange}
                 required
-                className={inputClass}
+                className={fieldClass("firstName")}
               />
+              <FieldError name="firstName" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Last Name
-              </label>
+              <FieldLabel>Last Name</FieldLabel>
               <input
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleOnChange}
-                required
-                className={inputClass}
+                className={fieldClass("lastName")}
               />
+              <FieldError name="lastName" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Date of Birth
-              </label>
+              <FieldLabel>Date of Birth</FieldLabel>
               <input
                 type="date"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleOnChange}
-                required
                 max={new Date().toISOString().split("T")[0]}
-                className={inputClass}
+                className={fieldClass("dateOfBirth")}
               />
+              <FieldError name="dateOfBirth" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Personal Email
-              </label>
+              <FieldLabel>Personal Email</FieldLabel>
               <input
                 type="email"
                 name="personalEmail"
                 value={formData.personalEmail}
                 onChange={handleOnChange}
-                required
-                className={inputClass}
+                className={fieldClass("personalEmail")}
               />
+              <FieldError name="personalEmail" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Mobile Number
-              </label>
+              <FieldLabel>Mobile Number</FieldLabel>
               <input
                 name="mobileNumber"
                 value={formData.mobileNumber}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("mobileNumber")}
               />
+              <FieldError name="mobileNumber" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Username
-              </label>
+              <FieldLabel>Username</FieldLabel>
               <input
                 name="username"
                 value={formData.username}
                 onChange={handleOnChange}
-                required
-                className={inputClass}
+                className={fieldClass("username")}
               />
+              <FieldError name="username" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Password
-              </label>
+              <FieldLabel required={!isEditMode}>Password</FieldLabel>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleOnChange}
-                required={!isEditMode}
                 placeholder={isEditMode ? "Leave blank to keep current password" : ""}
-                className={inputClass}
+                className={fieldClass("password")}
               />
+              <FieldError name="password" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Basic Pay
-              </label>
+              <FieldLabel>Basic Pay</FieldLabel>
               <input
                 type="number"
                 name="basicPay"
+                min="1"
                 value={formData.basicPay}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("basicPay")}
               />
+              <FieldError name="basicPay" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Gender
-              </label>
+              <FieldLabel>Gender</FieldLabel>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleOnChange}
-                className={`${inputClass} bg-white`}
+                className={`${fieldClass("gender")} bg-white`}
               >
                 <option value={0}>Select Gender</option>
                 {GENDERS.map((gender) => (
@@ -280,17 +339,16 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
                   </option>
                 ))}
               </select>
+              <FieldError name="gender" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Designation
-              </label>
+              <FieldLabel>Designation</FieldLabel>
               <select
                 name="designation"
                 value={formData.designation}
                 onChange={handleOnChange}
-                className={`${inputClass} bg-white`}
+                className={`${fieldClass("designation")} bg-white`}
               >
                 <option value={0}>Select Designation</option>
                 {DESIGNATIONS.map((designation) => (
@@ -299,56 +357,53 @@ export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
                   </option>
                 ))}
               </select>
+              <FieldError name="designation" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Country
-              </label>
+              <FieldLabel>Country</FieldLabel>
               <input
                 name="country"
                 value={formData.country}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("country")}
               />
+              <FieldError name="country" />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                City
-              </label>
+              <FieldLabel>City</FieldLabel>
               <input
                 name="city"
                 value={formData.city}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("city")}
               />
+              <FieldError name="city" />
             </div>
 
             <div className="lg:col-span-3">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Postal Address
-              </label>
+              <FieldLabel>Postal Address</FieldLabel>
               <textarea
                 name="postalAddress"
                 rows={3}
                 value={formData.postalAddress}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("postalAddress")}
               />
+              <FieldError name="postalAddress" />
             </div>
 
             <div className="lg:col-span-3">
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Notes
-              </label>
+              <FieldLabel>Notes</FieldLabel>
               <textarea
                 name="notes"
                 rows={3}
                 value={formData.notes}
                 onChange={handleOnChange}
-                className={inputClass}
+                className={fieldClass("notes")}
               />
+              <FieldError name="notes" />
             </div>
 
             <div className="flex items-center gap-3 lg:col-span-3">

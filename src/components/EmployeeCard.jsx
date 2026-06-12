@@ -92,7 +92,8 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
                   {getDesignationName(employee.designation)}
                 </span>
                 {genderLabel && (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    <UserIcon className="h-3.5 w-3.5" />
                     {genderLabel}
                   </span>
                 )}
@@ -166,7 +167,9 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
               <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">
                 Additional Info
               </p>
-              <h3 className="mt-1 truncate text-lg font-semibold">{displayName}</h3>
+              <h3 className="mt-1 truncate text-lg font-semibold">
+                {displayName}
+              </h3>
             </div>
 
             <div className="mt-4 space-y-4 text-sm">
@@ -202,7 +205,8 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
                       <>
                         {employee.postalAddress}
                         <br />
-                        {employee.postalCode} {employee.city}, {employee.country}
+                        {employee.postalCode} {employee.city},{" "}
+                        {employee.country}
                       </>
                     ) : (
                       "—"
