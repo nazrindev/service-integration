@@ -25,10 +25,9 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-800 antialiased">
-      {/* Sidebar - Deep Dark Slate */}
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800 antialiased">
       <aside
-        className={`relative flex shrink-0 flex-col overflow-hidden bg-slate-900 text-slate-100 shadow-xl transition-[width] duration-300 ease-in-out ${
+        className={`flex h-screen shrink-0 flex-col overflow-hidden bg-slate-900 text-slate-100 shadow-xl transition-[width] duration-300 ease-in-out ${
           sidebarOpen ? "w-64" : "w-[4.5rem]"
         }`}
       >
@@ -82,8 +81,7 @@ export default function Layout() {
           </NavLink>
         </nav>
 
-        {/* Logout Section */}
-        <div className="border-t border-slate-800 p-3">
+        <div className="mt-auto shrink-0 border-t border-slate-800 p-3">
           <button
             type="button"
             onClick={handleLogout}
@@ -104,9 +102,8 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 overflow-auto p-8">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <main className="flex-1 overflow-y-auto p-8">
           <Outlet />
         </main>
       </div>

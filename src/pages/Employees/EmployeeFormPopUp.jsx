@@ -1,24 +1,52 @@
 import { useState, useEffect } from "react";
-import { createEmployee } from "../../services/EmployeeService";
+import { createEmployee, updateEmployee } from "../../services/EmployeeService";
+import { DESIGNATIONS, GENDERS } from "../../constants/lookups";
+import StatusMessage from "../../components/StatusMessage";
 
-export default function AddEmployeePopUp({ setshowCreatePopUp }) {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    dateOfBirth: "",
-    personalEmail: "",
-    mobileNumber: "",
-    postalAddress: "",
-    gender: 0,
-    country: "",
-    city: "",
-    designation: 0,
-    basicPay: 0,
-    needTransportation: false,
-    notes: "",
-    username: "",
+const EMPTY_FORM = {
+  firstName: "",
+  lastName: "",
+  dateOfBirth: "",
+  personalEmail: "",
+  mobileNumber: "",
+  postalAddress: "",
+  gender: 0,
+  country: "",
+  city: "",
+  designation: 0,
+  basicPay: 0,
+  needTransportation: false,
+  notes: "",
+  username: "",
+  password: "",
+};
+
+function mapEmployeeToForm(employee) {
+  return {
+    firstName: employee.firstName ?? "",
+    lastName: employee.lastName ?? "",
+    dateOfBirth: employee.dateOfBirth
+      ? employee.dateOfBirth.split("T")[0]
+      : "",
+    personalEmail: employee.personalEmail ?? "",
+    mobileNumber: employee.mobileNumber ?? "",
+    postalAddress: employee.postalAddress ?? "",
+    gender: employee.gender ?? 0,
+    country: employee.country ?? "",
+    city: employee.city ?? "",
+    designation: employee.designation ?? 0,
+    basicPay: employee.basicPay ?? 0,
+    needTransportation: employee.needTransportation ?? false,
+    notes: employee.notes ?? "",
+    username: employee.username ?? "",
     password: "",
-  });
+  };
+}
+
+export default function EmployeeFormPopUp({ employee, onClose, onSuccess }) {
+  const isEditMode = Boolean(employee?.employeeID);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [statusMessage, setStatusMessage] = useState(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -26,6 +54,11 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
       document.body.style.overflow = "unset";
     };
   }, []);
+
+  useEffect(() => {
+    setFormData(employee ? mapEmployeeToForm(employee) : EMPTY_FORM);
+    setStatusMessage(null);
+  }, [employee]);
 
   const handleOnChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,7 +75,10 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
     const dob = new Date(formData.dateOfBirth);
     const today = new Date();
     if (dob > today) {
-      alert("Date of Birth cannot be a future date.");
+      setStatusMessage({
+        type: "warning",
+        message: "Date of Birth cannot be a future date.",
+      });
       return;
     }
 
@@ -53,43 +89,71 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
       basicPay: Number(formData.basicPay),
     };
 
+    if (isEditMode) {
+      payload.employeeID = employee.employeeID;
+      if (!payload.password) {
+        delete payload.password;
+      }
+    }
+
     try {
-      await createEmployee(payload);
-      alert("Employee Added Successfully");
-      setshowCreatePopUp(false);
+      setStatusMessage(null);
+
+      if (isEditMode) {
+        await updateEmployee(employee.employeeID, payload);
+      } else {
+        await createEmployee(payload);
+      }
+
+      onSuccess?.(isEditMode ? "edit" : "add");
+      onClose();
     } catch (error) {
       console.error(error);
-      alert("Operation failed");
+      setStatusMessage({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          error.response?.data?.title ||
+          `Failed to ${isEditMode ? "update" : "create"} employee. Please try again.`,
+      });
     }
   };
 
+  const inputClass =
+    "w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
+
   return (
-    // FIX 2: This container now rigidly acts as a true screen-sized backdrop overlay
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 w-screen h-screen">
-      {/* Click outside to close helper option (Optional but helpful structural layer) */}
-      <div
-        className="absolute inset-0"
-        onClick={() => setshowCreatePopUp(false)}
-      />
+    <div className="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="absolute inset-0" onClick={onClose} />
 
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 flex flex-col max-h-[90vh] w-full max-w-5xl rounded-2xl bg-white shadow-2xl"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white shadow-2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5 rounded-t-2xl">
-          <h2 className="text-xl font-semibold text-slate-900">Add Employee</h2>
+        <div className="flex items-center justify-between rounded-t-2xl border-b border-slate-200 bg-white px-6 py-5">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {isEditMode ? "Edit Employee" : "Add Employee"}
+          </h2>
           <button
             type="button"
-            onClick={() => setshowCreatePopUp(false)}
+            onClick={onClose}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >
             ✕
           </button>
         </div>
 
-        {/* FIX 3: Isolated scrolling context to form fields area ONLY */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto p-6">
+          {statusMessage && (
+            <div className="mb-4">
+              <StatusMessage
+                type={statusMessage.type}
+                message={statusMessage.message}
+                onClose={() => setStatusMessage(null)}
+              />
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -100,7 +164,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 value={formData.firstName}
                 onChange={handleOnChange}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -113,7 +177,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 value={formData.lastName}
                 onChange={handleOnChange}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -128,7 +192,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 onChange={handleOnChange}
                 required
                 max={new Date().toISOString().split("T")[0]}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -142,7 +206,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 value={formData.personalEmail}
                 onChange={handleOnChange}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -154,7 +218,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="mobileNumber"
                 value={formData.mobileNumber}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -167,7 +231,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 value={formData.username}
                 onChange={handleOnChange}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -180,8 +244,9 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="password"
                 value={formData.password}
                 onChange={handleOnChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                required={!isEditMode}
+                placeholder={isEditMode ? "Leave blank to keep current password" : ""}
+                className={inputClass}
               />
             </div>
 
@@ -194,7 +259,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="basicPay"
                 value={formData.basicPay}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -206,12 +271,14 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="gender"
                 value={formData.gender}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 bg-white"
+                className={`${inputClass} bg-white`}
               >
                 <option value={0}>Select Gender</option>
-                <option value={1}>Male</option>
-                <option value={2}>Female</option>
-                <option value={3}>Other</option>
+                {GENDERS.map((gender) => (
+                  <option key={gender.id} value={gender.id}>
+                    {gender.value}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -223,13 +290,14 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="designation"
                 value={formData.designation}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 bg-white"
+                className={`${inputClass} bg-white`}
               >
                 <option value={0}>Select Designation</option>
-                <option value={1}>Developer</option>
-                <option value={2}>Designer</option>
-                <option value={3}>Manager</option>
-                <option value={4}>HR</option>
+                {DESIGNATIONS.map((designation) => (
+                  <option key={designation.id} value={designation.id}>
+                    {designation.value}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -241,7 +309,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="country"
                 value={formData.country}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -253,7 +321,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 name="city"
                 value={formData.city}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -266,7 +334,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 rows={3}
                 value={formData.postalAddress}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
@@ -279,11 +347,11 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
                 rows={3}
                 value={formData.notes}
                 onChange={handleOnChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                className={inputClass}
               />
             </div>
 
-            <div className="lg:col-span-3 flex items-center gap-3">
+            <div className="flex items-center gap-3 lg:col-span-3">
               <input
                 type="checkbox"
                 name="needTransportation"
@@ -294,7 +362,7 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
               />
               <label
                 htmlFor="needTransportation"
-                className="text-sm font-medium text-slate-700 select-none"
+                className="select-none text-sm font-medium text-slate-700"
               >
                 Need Transportation
               </label>
@@ -302,11 +370,10 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 bg-white rounded-b-2xl">
+        <div className="flex justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-white px-6 py-4">
           <button
             type="button"
-            onClick={() => setshowCreatePopUp(false)}
+            onClick={onClose}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Cancel
@@ -314,9 +381,9 @@ export default function AddEmployeePopUp({ setshowCreatePopUp }) {
 
           <button
             type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Create Employee
+            {isEditMode ? "Update Employee" : "Create Employee"}
           </button>
         </div>
       </form>

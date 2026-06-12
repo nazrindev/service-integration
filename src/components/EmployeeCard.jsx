@@ -6,120 +6,174 @@ import {
   MapPinIcon,
   CalendarDaysIcon,
   UserIcon,
+  PencilSquareIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 import { DESIGNATIONS, GENDERS } from "../constants/lookups";
 import { useState, useRef } from "react";
 
-export default function EmployeeCard({ employee }) {
+export default function EmployeeCard({ employee, onEdit, onDelete }) {
   const getDesignationName = (id) =>
     DESIGNATIONS.find((d) => d.id === id)?.value || "Team Member";
-  const getGender = (id) => GENDERS.find((d) => d.id === id)?.value || "-";
+  const getGender = (id) => GENDERS.find((d) => d.id === id)?.value || "—";
 
   const [flipped, setFlipped] = useState(false);
   const timerRef = useRef(null);
 
-  const handleMouseEnter = () => {
-    timerRef.current = setTimeout(() => {
-      setFlipped(true);
-    }, 1200);
+  const clearFlipTimer = () => {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
   };
 
-  const handleMouseLeave = () => {
-    clearTimeout(timerRef.current);
+  const handleFlipZoneEnter = () => {
+    clearFlipTimer();
+    timerRef.current = setTimeout(() => setFlipped(true), 1200);
+  };
+
+  const handleFlipZoneLeave = () => {
+    clearFlipTimer();
     setFlipped(false);
   };
 
+  const handleActionZoneEnter = () => {
+    clearFlipTimer();
+    setFlipped(false);
+  };
+
+  const genderLabel =
+    employee.gender && employee.gender !== 0
+      ? getGender(employee.gender)
+      : null;
+
+  const displayName = `${
+    employee.firstName?.charAt(0).toUpperCase() +
+    employee.firstName?.slice(1).toLowerCase()
+  } ${
+    employee.lastName?.charAt(0).toUpperCase() +
+    employee.lastName?.slice(1).toLowerCase()
+  }`;
+
   return (
-    <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className="perspective group min-h-[320px] w-full cursor-pointer"
-    >
+    <div className="perspective group h-full w-full">
       <div
-        className={`relative h-full w-full transition-transform duration-700 ease-out preserve-3d ${
+        className={`relative h-full min-h-[320px] w-full transition-transform duration-700 ease-out preserve-3d ${
           flipped ? "rotate-y-180" : ""
         }`}
       >
-        <div className="absolute inset-0 backface-hidden rounded-3xl border border-slate-100 bg-white p-6 shadow-md transition-shadow duration-300 group-hover:shadow-xl flex flex-col justify-between">
-          <div>
-            <div className="flex gap-5">
-              <div className="relative shrink-0">
-                <img
-                  src={
-                    employee.avatar ||
-                    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  }
-                  alt={`${employee.firstName} ${employee.lastName}`}
-                  className="h-36 w-28 rounded-2xl object-cover ring-4 ring-slate-50/50 shadow-inner"
-                />
+        <div className="absolute inset-0 backface-hidden flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 group-hover:border-indigo-200 group-hover:shadow-md">
+          <div
+            onMouseEnter={handleFlipZoneEnter}
+            onMouseLeave={handleFlipZoneLeave}
+            className="flex items-start gap-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white p-5"
+          >
+            <img
+              src={
+                employee.avatar ||
+                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+              }
+              alt={displayName}
+              className="h-24 w-24 shrink-0 rounded-2xl object-cover ring-2 ring-white shadow-md"
+            />
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                <IdentificationIcon className="h-3.5 w-3.5" />
+                <span>ID {employee.employeeID}</span>
               </div>
 
-              <div className="flex-1 min-w-0">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 mb-2">
-                  <IdentificationIcon className="h-3.5 w-3.5" />
-                  {employee.employeeID}
+              <h3 className="truncate text-lg font-semibold text-slate-900">
+                {displayName}
+              </h3>
+
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                  <BriefcaseIcon className="h-3.5 w-3.5" />
+                  {getDesignationName(employee.designation)}
                 </span>
-
-                <h3 className="text-xl font-bold text-slate-800 tracking-tight truncate">
-                  {employee.firstName} {employee.lastName}
-                </h3>
-
-                <div className="mt-1 flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-                  <BriefcaseIcon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    {getDesignationName(employee.designation)}
-                  </span>
-                </div>
-
-                {employee.gender != null && (
-                  <span className="mt-2 inline-block rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                    {employee.gender === 0
-                      ? "Not Specified"
-                      : getGender(employee.gender)}
+                {genderLabel && (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    {genderLabel}
                   </span>
                 )}
               </div>
             </div>
+          </div>
 
-            <div className="mt-4 space-y-2.5 border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-3 text-slate-600 hover:text-slate-900 transition-colors">
-                <EnvelopeIcon className="h-4 w-4 text-slate-400 shrink-0" />
-                <span className="text-sm truncate select-all">
+          <div className="flex flex-1 flex-col justify-between p-5">
+            <div
+              onMouseEnter={handleFlipZoneEnter}
+              onMouseLeave={handleFlipZoneLeave}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                  <EnvelopeIcon className="h-4 w-4" />
+                </span>
+                <span className="truncate text-sm text-slate-600">
                   {employee.personalEmail}
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 text-slate-600 hover:text-slate-900 transition-colors">
-                <PhoneIcon className="h-4 w-4 text-slate-400 shrink-0" />
-                <span className="text-sm tracking-wide select-all">
-                  {employee.mobileNumber}
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                  <PhoneIcon className="h-4 w-4" />
+                </span>
+                <span className="text-sm text-slate-600">
+                  {employee.mobileNumber || "—"}
                 </span>
               </div>
             </div>
-          </div>
 
-          <button className="mt-4 w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]">
-            View Profile
-          </button>
+            <div
+              onMouseEnter={handleActionZoneEnter}
+              className="mt-5 shrink-0 flex gap-2"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(employee);
+                }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 active:scale-[0.98]"
+              >
+                <PencilSquareIcon className="h-4 w-4" />
+                Edit Profile
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(employee);
+                }}
+                title="Delete employee"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98]"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="absolute inset-0 rotate-y-180 backface-hidden rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white shadow-2xl flex flex-col justify-between border border-slate-700/50">
+        <div
+          onMouseEnter={handleFlipZoneEnter}
+          onMouseLeave={handleFlipZoneLeave}
+          className="absolute inset-0 rotate-y-180 backface-hidden flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-xl"
+        >
           <div>
             <div className="border-b border-slate-700/60 pb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">
                 Additional Info
               </p>
-              <h3 className="text-lg font-bold tracking-tight mt-0.5">
-                {employee.firstName} {employee.lastName}
-              </h3>
+              <h3 className="mt-1 truncate text-lg font-semibold">{displayName}</h3>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-y-3.5 text-sm text-slate-300">
+            <div className="mt-4 space-y-4 text-sm">
               <div className="flex items-start gap-3">
-                <CalendarDaysIcon className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                <CalendarDaysIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-medium">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
                     Date of Birth
                   </p>
                   <p className="font-medium text-slate-200">
@@ -138,17 +192,17 @@ export default function EmployeeCard({ employee }) {
               </div>
 
               <div className="flex items-start gap-3">
-                <MapPinIcon className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-medium">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
                     Address
                   </p>
-                  <p className="font-medium text-slate-200 leading-snug">
+                  <p className="font-medium leading-snug text-slate-200">
                     {employee.postalAddress ? (
                       <>
-                        {employee.postalAddress}, <br />
-                        {employee.postalCode} {employee.city},{" "}
-                        {employee.country}
+                        {employee.postalAddress}
+                        <br />
+                        {employee.postalCode} {employee.city}, {employee.country}
                       </>
                     ) : (
                       "—"
@@ -158,22 +212,22 @@ export default function EmployeeCard({ employee }) {
               </div>
 
               <div className="flex items-start gap-3">
-                <UserIcon className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                <UserIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-medium">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
                     Gender
                   </p>
-                  <p className="font-medium text-slate-200 capitalize">
-                    {employee.gender || "—"}
+                  <p className="font-medium text-slate-200">
+                    {genderLabel || "—"}
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="text-right text-[10px] font-medium tracking-wide text-slate-500">
+          <p className="text-right text-[10px] font-medium tracking-wide text-slate-500">
             Hover away to flip back
-          </div>
+          </p>
         </div>
       </div>
     </div>

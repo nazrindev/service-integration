@@ -2,6 +2,7 @@ export default function PageSizeSelector({
   pageSize,
   setPageSize,
   setPageNumber,
+  setTotalPages,
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -14,6 +15,7 @@ export default function PageSizeSelector({
         onChange={(e) => {
           setPageSize(Number(e.target.value));
           setPageNumber(1);
+          setTotalPages?.(1);
         }}
         className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
       >

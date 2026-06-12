@@ -1,6 +1,6 @@
 import EmployeeCard from "./EmployeeCard";
 
-export default function EmployeeList({ employees }) {
+export default function EmployeeList({ employees, onEditEmployee, onDeleteEmployee }) {
   if (!employees.length) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
@@ -12,7 +12,12 @@ export default function EmployeeList({ employees }) {
   return (
     <div className="grid auto-rows-fr gap-5 md:grid-cols-2">
       {employees.map((employee) => (
-        <EmployeeCard key={employee.employeeID} employee={employee} />
+        <EmployeeCard
+          key={employee.employeeID}
+          employee={employee}
+          onEdit={onEditEmployee}
+          onDelete={onDeleteEmployee}
+        />
       ))}
     </div>
   );
