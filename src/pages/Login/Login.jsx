@@ -1,12 +1,14 @@
 import { useState } from "react";
 import styles from "./login.module.css";
 import { login as loginApi } from "../../services/authService";
+import { useNavigate, redirect } from "react-router-dom";
 
 export default function Login() {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
+  const navigate = useNavigate();
 
   function handleInputOnchange(e) {
     setFormData({
@@ -18,7 +20,8 @@ export default function Login() {
     e.preventDefault();
     try {
       const data = await loginApi(formData.username, formData.password);
-      console.log(data);
+      localStorage.setItem("token", data.token);
+      navigate("/dashboard");
     } catch (error) {
       console.error(error);
     }
