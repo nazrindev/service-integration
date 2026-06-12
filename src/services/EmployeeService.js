@@ -13,6 +13,6 @@ export const getEmployee = async (id) => {
 };
 
 export const createEmployee = async (employee) => {
-  const response = await api.post("/employees", employee);
+  const response = await api.post("/api/Employee", employee);
   return response.data;
 };
