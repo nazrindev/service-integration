@@ -54,6 +54,10 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
     employee.lastName?.slice(1).toLowerCase()
   }`;
 
+  const initials =
+    `${employee.firstName?.charAt(0) ?? ""}${employee.lastName?.charAt(0) ?? ""}`.toUpperCase() ||
+    "?";
+
   return (
     <div className="perspective group h-full w-full">
       <div
@@ -67,14 +71,12 @@ export default function EmployeeCard({ employee, onEdit, onDelete }) {
             onMouseLeave={handleFlipZoneLeave}
             className="flex items-start gap-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white p-5"
           >
-            <img
-              src={
-                employee.avatar ||
-                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-              }
-              alt={displayName}
-              className="h-24 w-24 shrink-0 rounded-2xl object-cover ring-2 ring-white shadow-md"
-            />
+            <div
+              aria-hidden="true"
+              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-2xl font-bold tracking-wide text-white shadow-md ring-2 ring-white"
+            >
+              {initials}
+            </div>
 
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-400">
